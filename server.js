@@ -6826,6 +6826,61 @@ cache(function(data, match, sendBadge, request) {
   });
 }));
 
+// Particle.io integration
+camp.route(/^\/particle\/([^\/]+)\.(svg|png|gif|jpg|json)$/,
+cache(function(data, match, sendBadge, request) {
+  // Ex. /particle/opcn2.svg
+  var text = "Particle.io Installs"; // text that appears on the LHS
+  var library = match[1];
+  var format = match[2];
+
+  // TODO
+  // Get this from API eventually after secrets are figured out.
+
+  // We should be able to send the access token in the url query string since
+  // we are only performing GET requests.
+  var badgeData = getBadgeData(text, data);
+
+  // Get the Access Token somehow...
+  var access_token = '';
+  var url = "https://api.particle.io/v1/libraries/" + library
+                + "?access_token=" + access_token;
+
+  var options = {
+    method: 'GET',
+    url: url,
+    json: true
+  };
+
+  // Make the request
+  request(options, function(err, res, json) {
+    if (err != null || res.statusCode >= 500) {
+      badgeData.text[1] = 'invalid';
+      sendBadge(format, badgeData);
+      return;
+    }
+
+    if (res.statusCode >= 400 || !json || typeof json !== 'object') {
+      badgeData.text[1] = 'not found';
+      sendBadge(format, badgeData);
+      return;
+    }
+
+    try {
+      var installs = json['data']['attributes']['installs'];
+
+      badgeData.text[1] = metric(installs);
+      badgeData.colorscheme = 'blue';
+      badgeData.colorB = '#008bb8';
+
+      sendBadge(format, badgeData);
+    } catch (e) {
+      badgeData.text[1] = 'invalid';
+      sendBadge(format, badgeData);
+    }
+  });
+}));
+
 // Libraries.io integration.
 camp.route(/^\/librariesio\/(github|release)\/([\w\-_]+\/[\w\-_]+)\/?([\w\-_.]+)?\.(svg|png|gif|jpg|json)$/,
 cache(function(data, match, sendBadge, request) {
